@@ -79,62 +79,86 @@
     </nav>
 
     <!-- Main Content -->
-    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 h-[calc(100vh-4rem)] flex gap-6 overflow-hidden">
         
-        <!-- Metrics Cards -->
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <!-- CPU Card -->
-            <div class="bg-gray-800 rounded-lg shadow p-6 border border-gray-700">
-                <div class="flex items-center justify-between mb-4">
-                    <h2 class="text-lg font-medium text-gray-300">CPU Usage</h2>
-                    <i class="fas fa-microchip text-blue-400 text-xl"></i>
+        <!-- Left Panel: Metrics & Services (30%) -->
+        <aside class="w-[30%] flex flex-col gap-6 overflow-hidden">
+            
+            <!-- Metrics Section -->
+            <div class="space-y-4">
+                <!-- CPU Card -->
+                <div class="bg-gray-800 rounded-lg shadow p-4 border border-gray-700">
+                    <div class="flex items-center justify-between mb-2">
+                        <h2 class="text-sm font-medium text-gray-300">CPU</h2>
+                        <span id="cpu-val" class="text-xl font-bold text-white">0%</span>
+                    </div>
+                    <div class="w-full bg-gray-700 rounded-full h-2">
+                        <div id="cpu-bar" class="bg-blue-500 h-2 rounded-full transition-all duration-500" style="width: 0%"></div>
+                    </div>
                 </div>
-                <div class="flex items-end space-x-2">
-                    <span id="cpu-val" class="text-4xl font-bold text-white">0%</span>
+
+                <!-- Memory Card -->
+                <div class="bg-gray-800 rounded-lg shadow p-4 border border-gray-700">
+                    <div class="flex items-center justify-between mb-2">
+                        <h2 class="text-sm font-medium text-gray-300">Memory</h2>
+                        <span id="mem-val" class="text-xl font-bold text-white">0%</span>
+                    </div>
+                    <div class="flex justify-between text-xs text-gray-400 mb-2">
+                        <span id="mem-detais">0 / 0 GB</span>
+                    </div>
+                    <div class="w-full bg-gray-700 rounded-full h-2">
+                        <div id="mem-bar" class="bg-purple-500 h-2 rounded-full transition-all duration-500" style="width: 0%"></div>
+                    </div>
                 </div>
-                <div class="w-full bg-gray-700 rounded-full h-2.5 mt-4">
-                    <div id="cpu-bar" class="bg-blue-500 h-2.5 rounded-full transition-all duration-500" style="width: 0%"></div>
+
+                <!-- Disk Usage (Compact) -->
+                <div id="disks-container" class="space-y-2 max-h-40 overflow-y-auto pr-1">
+                    <!-- Disks injected here -->
                 </div>
             </div>
 
-            <!-- Memory Card -->
-            <div class="bg-gray-800 rounded-lg shadow p-6 border border-gray-700">
-                <div class="flex items-center justify-between mb-4">
-                    <h2 class="text-lg font-medium text-gray-300">Memory Usage</h2>
-                    <i class="fas fa-memory text-purple-400 text-xl"></i>
+            <!-- Services Manager (Linux Only) -->
+            <div id="services-section" class="flex-1 bg-gray-800 rounded-lg shadow border border-gray-700 flex flex-col overflow-hidden hidden">
+                <div class="px-4 py-3 border-b border-gray-700 flex justify-between items-center bg-gray-900">
+                    <h2 class="text-sm font-semibold text-white">System Services</h2>
+                    <button onclick="fetchServices()" class="text-xs text-gray-400 hover:text-white"><i class="fas fa-sync-alt"></i></button>
                 </div>
-                <div class="flex items-end space-x-2">
-                    <span id="mem-val" class="text-4xl font-bold text-white">0%</span>
-                    <span id="mem-detais" class="text-sm text-gray-400 mb-1 ml-2">(- / - GB)</span>
+                <!-- Search Bar -->
+                <div class="p-2 border-b border-gray-700 bg-gray-800">
+                    <input type="text" id="service-search" placeholder="Search services..." 
+                           class="w-full bg-gray-700 text-sm text-white px-3 py-1 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+                           onkeyup="filterServices()">
                 </div>
-                <div class="w-full bg-gray-700 rounded-full h-2.5 mt-4">
-                    <div id="mem-bar" class="bg-purple-500 h-2.5 rounded-full transition-all duration-500" style="width: 0%"></div>
+                <!-- Services List -->
+                <div class="flex-1 overflow-y-auto p-2 space-y-1" id="services-list">
+                    <div class="text-center text-gray-500 text-xs mt-4">Loading services...</div>
                 </div>
             </div>
-        </div>
+            
+            <!-- Fallback for Windows -->
+            <div id="services-placeholder" class="flex-1 bg-gray-800 rounded-lg shadow border border-gray-700 flex flex-col items-center justify-center text-gray-500 text-sm p-4 text-center">
+                Services management is only available on Linux.
+            </div>
 
-        <!-- Disk Usage -->
-        <div id="disks-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            <!-- Disks injected by JS -->
-        </div>
+        </aside>
 
-        <!-- Containers Table -->
-        <div class="bg-gray-800 rounded-lg shadow border border-gray-700 overflow-hidden">
-            <div class="px-6 py-4 border-b border-gray-700 flex justify-between items-center">
+        <!-- Right Panel: Containers (70%) -->
+        <section class="w-[70%] flex flex-col overflow-hidden bg-gray-800 rounded-lg shadow border border-gray-700">
+             <div class="px-6 py-4 border-b border-gray-700 flex justify-between items-center bg-gray-900">
                 <h2 class="text-lg font-semibold text-white">Docker Containers</h2>
                 <button onclick="fetchContainers()" class="text-gray-400 hover:text-white transition">
                     <i class="fas fa-sync-alt"></i> Refresh
                 </button>
             </div>
-            <div class="overflow-x-auto">
+            <div class="flex-1 overflow-y-auto">
                 <table class="w-full text-left">
-                    <thead class="bg-gray-900 text-gray-400 uppercase text-xs">
+                    <thead class="bg-gray-900 text-gray-400 uppercase text-xs sticky top-0">
                         <tr>
-                            <th class="px-6 py-3">Status</th>
-                            <th class="px-6 py-3">Name</th>
-                            <th class="px-6 py-3">Image</th>
-                            <th class="px-6 py-3">ID</th>
-                            <th class="px-6 py-3 text-right">Actions</th>
+                            <th class="px-6 py-3 bg-gray-900">Status</th>
+                            <th class="px-6 py-3 bg-gray-900">Name</th>
+                            <th class="px-6 py-3 bg-gray-900">Image</th>
+                            <th class="px-6 py-3 bg-gray-900">ID</th>
+                            <th class="px-6 py-3 bg-gray-900 text-right">Actions</th>
                         </tr>
                     </thead>
                     <tbody id="containers-body" class="divide-y divide-gray-700 text-sm">
@@ -142,7 +166,7 @@
                     </tbody>
                 </table>
             </div>
-        </div>
+        </section>
 
     </main>
 
@@ -221,71 +245,142 @@
             }, 3000);
         }
 
+        const API_SERVICES = '/api/services';
+        const API_SERVICES_CONTROL = '/api/services/control';
+
+        let servicesData = [];
+
         // --- Metrics ---
         async function fetchMetrics() {
             try {
                 const res = await fetch(API_HOST);
                 const data = await res.json();
                 
-                // Show/Hide Host Console based on OS
-                if (data.host_os === 'linux' || data.host_os === 'darwin') {
+                // Show/Hide Host Console & Services based on OS
+                const isLinux = data.host_os === 'linux' || data.host_os === 'darwin';
+                if (isLinux) {
                     document.getElementById('host-console-btn').classList.remove('hidden');
+                    document.getElementById('services-section').classList.remove('hidden');
+                    document.getElementById('services-placeholder').classList.add('hidden');
+                    if (servicesData.length === 0) fetchServices(); // Initial fetch
+                } else {
+                    document.getElementById('services-section').classList.add('hidden');
+                    document.getElementById('services-placeholder').classList.remove('hidden');
                 }
                 
                 // CPU
                 const cpuPerc = data.cpu_usage_percent.toFixed(1);
                 document.getElementById('cpu-val').innerText = cpuPerc + '%';
                 document.getElementById('cpu-bar').style.width = cpuPerc + '%';
-                // Color change based on load
-                const cpuBar = document.getElementById('cpu-bar');
-                if (cpuPerc > 80) cpuBar.className = 'bg-red-500 h-2.5 rounded-full transition-all duration-500';
-                else if (cpuPerc > 50) cpuBar.className = 'bg-yellow-500 h-2.5 rounded-full transition-all duration-500';
-                else cpuBar.className = 'bg-blue-500 h-2.5 rounded-full transition-all duration-500';
-
-                // Memory
-                const memUsed = BigInt(data.used_memory); // Using BigInt for safety
+               
+               // Memory
+                const memUsed = BigInt(data.used_memory);
                 const memTotal = BigInt(data.total_memory);
                 const memPerc = Number((memUsed * 100n) / memTotal);
-                
                 document.getElementById('mem-val').innerText = memPerc + '%';
-                document.getElementById('mem-detais').innerText = `(${formatBytes(Number(memUsed))} / ${formatBytes(Number(memTotal))})`;
+                document.getElementById('mem-detais').innerText = `${formatBytes(Number(memUsed))} / ${formatBytes(Number(memTotal))}`;
                 document.getElementById('mem-bar').style.width = memPerc + '%';
 
-                // Disks
+                // Disks (Compact List)
                 const disksContainer = document.getElementById('disks-container');
                 disksContainer.innerHTML = '';
                 
                 if (data.disks && data.disks.length > 0) {
                     data.disks.forEach(disk => {
-                        const usedPerc = disk.used_percent.toFixed(1);
+                        const usedPerc = disk.used_percent.toFixed(0);
                         let color = 'bg-blue-500';
                         if (usedPerc > 80) color = 'bg-red-500';
-                        else if (usedPerc > 50) color = 'bg-yellow-500';
-
+                        
                         const div = document.createElement('div');
-                        div.className = 'bg-gray-800 rounded-lg shadow p-6 border border-gray-700';
+                        div.className = 'text-xs text-gray-300';
                         div.innerHTML = `
-                            <div class="flex items-center justify-between mb-4">
-                                <h2 class="text-lg font-medium text-gray-300 truncate" title="${disk.path}">${disk.path}</h2>
-                                <i class="fas fa-hdd text-gray-400 text-xl"></i>
+                            <div class="flex justify-between mb-1">
+                                <span class="truncate w-1/2" title="${disk.path}">${disk.path}</span>
+                                <span>${usedPerc}% (${formatBytes(disk.free)} free)</span>
                             </div>
-                            <div class="flex items-end space-x-2">
-                                <span class="text-2xl font-bold text-white">${usedPerc}%</span>
-                                <span class="text-xs text-gray-400 mb-1 ml-2">(${formatBytes(disk.used)} / ${formatBytes(disk.total)})</span>
-                            </div>
-                            <div class="w-full bg-gray-700 rounded-full h-2.5 mt-4">
-                                <div class="${color} h-2.5 rounded-full transition-all duration-500" style="width: ${usedPerc}%"></div>
+                            <div class="w-full bg-gray-700 rounded-full h-1.5">
+                                <div class="${color} h-1.5 rounded-full" style="width: ${usedPerc}%"></div>
                             </div>
                         `;
                         disksContainer.appendChild(div);
                     });
                 }
 
-                document.getElementById('last-updated').innerText = `Last updated: ${new Date().toLocaleTimeString()}`;
+                document.getElementById('last-updated').innerText = `Updated: ${new Date().toLocaleTimeString()}`;
+            } catch (e) { console.error(e); }
+        }
+
+        // --- Services ---
+        async function fetchServices() {
+            try {
+                const res = await fetch(API_SERVICES);
+                if (!res.ok) return; // likely windows
+                servicesData = await res.json();
+                renderServices();
             } catch (e) {
-                console.error("Metric fetch error:", e);
+                console.error("Services error:", e);
             }
         }
+
+        function renderServices() {
+            const list = document.getElementById('services-list');
+            const term = document.getElementById('service-search').value.toLowerCase();
+            list.innerHTML = '';
+
+            const filtered = servicesData.filter(s => s.name.toLowerCase().includes(term));
+            
+            if (filtered.length === 0) {
+                list.innerHTML = '<div class="text-center text-gray-500 text-xs mt-4">No services found</div>';
+                return;
+            }
+
+            filtered.forEach(s => {
+                const isActive = s.active_state === 'active';
+                const color = isActive ? 'text-green-400' : 'text-gray-500';
+                
+                const div = document.createElement('div');
+                div.className = 'flex items-center justify-between bg-gray-700/50 p-2 rounded hover:bg-gray-700 transition group';
+                div.innerHTML = `
+                    <div class="flex-1 min-w-0 pr-2">
+                        <div class="flex items-center">
+                            <i class="fas fa-circle text-[8px] mr-2 ${color}"></i>
+                            <span class="text-sm font-medium text-gray-200 truncate" title="${s.description}">${s.name}</span>
+                        </div>
+                        <div class="text-[10px] text-gray-400 truncate pl-4">${s.description}</div>
+                    </div>
+                    <div class="flex space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        ${isActive ? 
+                            `<button onclick="controlService('${s.name}', 'stop')" class="p-1 hover:text-red-400" title="Stop"><i class="fas fa-stop"></i></button>
+                             <button onclick="controlService('${s.name}', 'restart')" class="p-1 hover:text-blue-400" title="Restart"><i class="fas fa-sync"></i></button>` :
+                            `<button onclick="controlService('${s.name}', 'start')" class="p-1 hover:text-green-400" title="Start"><i class="fas fa-play"></i></button>`
+                        }
+                    </div>
+                `;
+                list.appendChild(div);
+            });
+        }
+
+        function filterServices() {
+            renderServices();
+        }
+
+        async function controlService(name, action) {
+             showToast(`${action} ${name}...`);
+             try {
+                 const res = await fetch(API_SERVICES_CONTROL, {
+                     method: 'POST',
+                     headers: { 'Content-Type': 'application/json' },
+                     body: JSON.stringify({ name, action })
+                 });
+                 if (!res.ok) throw new Error(await res.text());
+                 showToast(`Service ${action}ed`);
+                 setTimeout(fetchServices, 1000); // Wait a bit for state change
+             } catch (e) {
+                 showToast(`Error: ${e.message}`, true);
+             }
+        }
+
+        // --- Containers ---
 
         // --- Containers ---
         async function fetchContainers() {

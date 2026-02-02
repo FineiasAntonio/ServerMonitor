@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"runtime"
+	"strings"
 	"time"
 
 	"ServerMonitor/internal/model"
@@ -67,4 +68,66 @@ func StartHostConsole() (*os.File, error) {
 		return nil, err
 	}
 	return f, nil
+}
+
+// ListServices returns a list of systemd services (Linux only)
+func ListServices() ([]model.ServiceInfo, error) {
+	if runtime.GOOS == "windows" {
+		return []model.ServiceInfo{}, nil
+	}
+
+	// systemctl list-units --type=service --all --no-pager --no-legend
+	cmd := exec.Command("systemctl", "list-units", "--type=service", "--all", "--no-pager", "--no-legend")
+	output, err := cmd.Output()
+	if err != nil {
+		return nil, err
+	}
+
+	var services []model.ServiceInfo
+	lines := strings.Split(string(output), "\n")
+	for _, line := range lines {
+		fields := strings.Fields(line)
+		if len(fields) < 4 {
+			continue
+		}
+		// Format: UNIT LOAD ACTIVE SUB DESCRIPTION...
+		// example: ssh.service loaded active running OpenBSD Secure Shell server
+		name := fields[0]
+		load := fields[1]
+		active := fields[2]
+		sub := fields[3]
+		desc := ""
+		if len(fields) > 4 {
+			desc = strings.Join(fields[4:], " ")
+		}
+
+		services = append(services, model.ServiceInfo{
+			Name:        name,
+			LoadState:   load,
+			ActiveState: active,
+			SubState:    sub,
+			Description: desc,
+		})
+	}
+	return services, nil
+}
+
+// ControlService sends a command to a systemd service (start/stop/restart)
+func ControlService(name, action string) error {
+	if runtime.GOOS == "windows" {
+		return fmt.Errorf("service control not supported on windows")
+	}
+
+	validActions := map[string]bool{"start": true, "stop": true, "restart": true}
+	if !validActions[action] {
+		return fmt.Errorf("invalid action")
+	}
+
+	// Basic injection prevention
+	if strings.ContainsAny(name, ";&|") {
+		return fmt.Errorf("invalid service name")
+	}
+
+	cmd := exec.Command("sudo", "systemctl", action, name)
+	return cmd.Run()
 }

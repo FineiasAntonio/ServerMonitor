@@ -23,6 +23,8 @@ var upgrader = websocket.Upgrader{
 func RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/api/host", handleHostInfo)
 	mux.HandleFunc("/api/host/console", handleHostConsole)
+	mux.HandleFunc("/api/services", handleServices)
+	mux.HandleFunc("/api/services/control", handleServiceControl)
 	mux.HandleFunc("/api/containers", handleContainers)
 	mux.HandleFunc("/api/manage", handleContainerAction)
 	mux.HandleFunc("/api/containers/", handleContainerRequest)
@@ -31,6 +33,35 @@ func RegisterRoutes(mux *http.ServeMux) {
 func handleHostInfo(w http.ResponseWriter, r *http.Request) {
 	info := service.GetHostMetrics()
 	respondJSON(w, info)
+}
+
+func handleServices(w http.ResponseWriter, r *http.Request) {
+	list, err := service.ListServices()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	respondJSON(w, list)
+}
+
+func handleServiceControl(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	var req struct {
+		Name   string `json:"name"`
+		Action string `json:"action"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	if err := service.ControlService(req.Name, req.Action); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	w.WriteHeader(http.StatusOK)
 }
 
 func handleHostConsole(w http.ResponseWriter, r *http.Request) {

@@ -10,6 +10,15 @@ type SystemInfo struct {
 	HostOS      string     `json:"host_os"`
 }
 
+// ServiceInfo holds systemd service details
+type ServiceInfo struct {
+	Name        string `json:"name"`
+	LoadState   string `json:"load_state"`
+	ActiveState string `json:"active_state"`
+	SubState    string `json:"sub_state"`
+	Description string `json:"description"`
+}
+
 // DiskInfo holds storage metrics
 type DiskInfo struct {
 	Path        string  `json:"path"`
