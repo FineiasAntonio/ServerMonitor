@@ -29,6 +29,11 @@
             }
         }
     </script>
+    <!-- xterm.js -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm@5.3.0/css/xterm.css" />
+    <script src="https://cdn.jsdelivr.net/npm/xterm@5.3.0/lib/xterm.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xterm-addon-fit@0.8.0/lib/xterm-addon-fit.js"></script>
+
     <style>
         body { font-family: 'Inter', sans-serif; }
         /* Custom scrollbar for logs */
@@ -45,6 +50,12 @@
         .logs-scroll::-webkit-scrollbar-thumb:hover {
             background: #6b7280;
         }
+        /* Terminal container */
+        .terminal-container {
+            height: 100%;
+            width: 100%;
+            background-color: #000;
+        }
     </style>
 </head>
 <body class="bg-gray-900 text-gray-100 min-h-screen">
@@ -57,7 +68,10 @@
                     <i class="fas fa-server text-blue-500 text-2xl mr-3"></i>
                     <h1 class="text-xl font-bold tracking-tight">Server Monitor</h1>
                 </div>
-                <div class="flex space-x-4 text-sm font-medium text-gray-400">
+                <div class="flex space-x-4 text-sm font-medium text-gray-400 items-center">
+                    <button id="host-console-btn" onclick="openHostConsole()" class="px-3 py-1 bg-gray-700 hover:bg-gray-600 text-white rounded transition flex items-center hidden">
+                        <i class="fas fa-terminal mr-2 text-yellow-500"></i> Host Console
+                    </button>
                     <span id="last-updated">Updating...</span>
                 </div>
             </div>
@@ -137,10 +151,10 @@
         <div class="bg-gray-900 w-full max-w-4xl h-[80vh] rounded-lg shadow-2xl border border-gray-700 flex flex-col">
             <div class="flex items-center justify-between px-6 py-4 border-b border-gray-700 bg-gray-800 rounded-t-lg">
                 <h3 class="text-lg font-semibold text-white flex items-center">
-                    <i class="fas fa-terminal mr-2 text-gray-400"></i>
+                    <i class="fas fa-file-alt mr-2 text-gray-400"></i>
                     Logs: <span id="modal-container-name" class="ml-2 text-blue-400">...</span>
                 </h3>
-                <button onclick="closeModal()" class="text-gray-400 hover:text-white transition">
+                <button onclick="closeModal('logs-modal')" class="text-gray-400 hover:text-white transition">
                     <i class="fas fa-times text-xl"></i>
                 </button>
             </div>
@@ -148,7 +162,28 @@
                 <pre id="logs-content" class="whitespace-pre-wrap break-all">Loading...</pre>
             </div>
             <div class="px-6 py-3 border-t border-gray-700 bg-gray-800 rounded-b-lg flex justify-end">
-                <button onclick="closeModal()" class="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded transition">Close</button>
+                <button onclick="closeModal('logs-modal')" class="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded transition">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Console Modal -->
+    <div id="console-modal" class="fixed inset-0 bg-black/90 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-gray-900 w-full max-w-5xl h-[85vh] rounded-lg shadow-2xl border border-gray-700 flex flex-col">
+            <div class="flex items-center justify-between px-6 py-4 border-b border-gray-700 bg-gray-800 rounded-t-lg">
+                <h3 class="text-lg font-semibold text-white flex items-center">
+                    <i class="fas fa-terminal mr-2 text-gray-400"></i>
+                    Console: <span id="console-container-name" class="ml-2 text-yellow-400">...</span>
+                </h3>
+                <button onclick="closeModal('console-modal')" class="text-gray-400 hover:text-white transition">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
+            <div class="flex-1 bg-black p-2 overflow-hidden relative">
+                <div id="terminal" class="terminal-container"></div>
+            </div>
+            <div class="px-6 py-3 border-t border-gray-700 bg-gray-800 rounded-b-lg flex justify-end">
+                <button onclick="closeModal('console-modal')" class="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded transition">Close Connection</button>
             </div>
         </div>
     </div>
@@ -162,6 +197,9 @@
         const API_HOST = '/api/host';
         const API_CONTAINERS = '/api/containers';
         const API_MANAGE = '/api/manage';
+
+        let term = null;
+        let ws = null;
 
         // --- Utils ---
         function formatBytes(bytes) {
@@ -189,6 +227,11 @@
                 const res = await fetch(API_HOST);
                 const data = await res.json();
                 
+                // Show/Hide Host Console based on OS
+                if (data.host_os === 'linux' || data.host_os === 'darwin') {
+                    document.getElementById('host-console-btn').classList.remove('hidden');
+                }
+                
                 // CPU
                 const cpuPerc = data.cpu_usage_percent.toFixed(1);
                 document.getElementById('cpu-val').innerText = cpuPerc + '%';
@@ -210,7 +253,7 @@
 
                 // Disks
                 const disksContainer = document.getElementById('disks-container');
-                disksContainer.innerHTML = ''; // Re-render for simplicity (or diff if we wanted to be fancy)
+                disksContainer.innerHTML = '';
                 
                 if (data.disks && data.disks.length > 0) {
                     data.disks.forEach(disk => {
@@ -296,6 +339,9 @@
                         <button onclick="showLogs('${c.id}', '${c.name.replace('/', '')}')" class="text-gray-400 hover:text-white transition" title="Logs">
                             <i class="fas fa-file-alt"></i> Logs
                         </button>
+                         <button onclick="openConsole('${c.id}', '${c.name.replace('/', '')}')" class="text-gray-400 hover:text-yellow-400 transition" title="Console">
+                            <i class="fas fa-terminal"></i> Console
+                        </button>
                     </td>
                 `;
                 tbody.appendChild(tr);
@@ -317,8 +363,8 @@
                     return;
                 }
                 
-                showToast(`Container ${action}ed successfully!`); // Note: 'started', 'stopped'. 'restart' -> 'restarted'
-                fetchContainers(); // Refresh list immediately
+                showToast(`Container ${action}ed successfully!`); 
+                fetchContainers(); 
             } catch (e) {
                 showToast("Network Error", true);
             }
@@ -338,32 +384,105 @@
                 const res = await fetch(`/api/containers/${id}/logs`);
                 if (!res.ok) throw new Error('Failed to load logs');
                 const text = await res.text();
-                // Basic cleanup of Docker header frames (optional)
-                // Docker frames: [ONE_BYTE_STREAM_TYPE] [3 BYTES 0] [4 BYTES SIZE]
-                // We're displaying raw, but let's see. If it's too messy, we can regex replace non-printable.
-                // For now, raw.
-                
-                // If text is empty
                 content.innerText = text || "No logs found.";
             } catch (e) {
                 content.innerText = "Error fetching logs: " + e.message;
             }
         }
 
-        function closeModal() {
-            document.getElementById('logs-modal').classList.add('hidden');
+        // --- Console ---
+        function openConsole(id, name) {
+            startConsole('containers/' + id + '/console', name);
+        }
+
+        function openHostConsole() {
+            startConsole('host/console', 'Host (PowerShell)');
+        }
+
+        function startConsole(path, name) {
+            document.getElementById('console-modal').classList.remove('hidden');
+            document.getElementById('console-container-name').innerText = name;
+
+            // Init xterm
+            const terminalContainer = document.getElementById('terminal');
+            terminalContainer.innerHTML = ''; // Clear previous
+            
+            term = new Terminal({
+                cursorBlink: true,
+                theme: {
+                    background: '#000000',
+                    foreground: '#ffffff',
+                },
+                fontSize: 14,
+                fontFamily: 'Menlo, Monaco, "Courier New", monospace'
+            });
+            
+            const fitAddon = new FitAddon.FitAddon();
+            term.loadAddon(fitAddon);
+            term.open(terminalContainer);
+            fitAddon.fit();
+            
+            window.addEventListener('resize', () => fitAddon.fit());
+
+            term.write('Connecting...\r\n');
+
+            // WebSocket
+            const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
+            const wsUrl = `${protocol}://${window.location.host}/api/${path}`;
+            
+            ws = new WebSocket(wsUrl);
+
+            ws.onopen = () => {
+                term.write('\x1b[32mConnected!\x1b[0m\r\n');
+                fitAddon.fit();
+            };
+
+            ws.onmessage = (event) => {
+                // If msg is binary (Blob), FileReader it? Actually we send TextMessage from backend for now.
+                // But xterm expects string or Uint8Array.
+                term.write(event.data);
+            };
+
+            ws.onclose = () => {
+                term.write('\r\n\x1b[31mConnection closed.\x1b[0m');
+            };
+
+            ws.onerror = (e) => {
+                term.write('\r\n\x1b[31mConnection error.\x1b[0m');
+            };
+
+            term.onData(data => {
+                if (ws && ws.readyState === WebSocket.OPEN) {
+                    ws.send(data);
+                }
+            });
+        }
+
+        function closeModal(id) {
+            document.getElementById(id).classList.add('hidden');
+            if (id === 'console-modal') {
+                if (ws) {
+                    ws.close();
+                    ws = null;
+                }
+                if (term) {
+                    term.dispose();
+                    term = null;
+                }
+            }
         }
 
         // --- Init ---
         setInterval(fetchMetrics, 2000);
-        setInterval(fetchContainers, 3000); // Polling containers less frequently
+        setInterval(fetchContainers, 3000); 
         fetchMetrics();
         fetchContainers();
 
         // Close modal on escape
         document.addEventListener('keydown', function(event) {
             if (event.key === "Escape") {
-                closeModal();
+                if (!document.getElementById('logs-modal').classList.contains('hidden')) closeModal('logs-modal');
+                if (!document.getElementById('console-modal').classList.contains('hidden')) closeModal('console-modal');
             }
         });
     </script>

@@ -7,8 +7,10 @@ import (
 
 	"ServerMonitor/internal/model"
 
+	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/client"
+	"github.com/gorilla/websocket"
 )
 
 var dockerCli *client.Client
@@ -73,4 +75,61 @@ func GetLogs(id string) (io.ReadCloser, error) {
 	ctx := context.Background()
 	options := container.LogsOptions{ShowStdout: true, ShowStderr: true, Tail: "100"}
 	return dockerCli.ContainerLogs(ctx, id, options)
+}
+
+// CreateExec prepares an exec instance for the container
+func CreateExec(containerID string) (string, error) {
+	ctx := context.Background()
+
+	config := types.ExecConfig{
+		AttachStdin:  true,
+		AttachStdout: true,
+		AttachStderr: true,
+		Tty:          true,
+		Cmd:          []string{"/bin/sh"},
+	}
+
+	resp, err := dockerCli.ContainerExecCreate(ctx, containerID, config)
+	if err != nil {
+		return "", err
+	}
+	return resp.ID, nil
+}
+
+// AttachExec connects the WebSocket to the Exec instance
+func AttachExec(execID string, ws *websocket.Conn) error {
+	ctx := context.Background()
+
+	resp, err := dockerCli.ContainerExecAttach(ctx, execID, types.ExecStartCheck{
+		Tty: true,
+	})
+	if err != nil {
+		return err
+	}
+	defer resp.Close()
+
+	// Stream: WebSocket -> Docker
+	go func() {
+		for {
+			_, msg, err := ws.ReadMessage()
+			if err != nil {
+				return
+			}
+			resp.Conn.Write(msg)
+		}
+	}()
+
+	// Stream: Docker -> WebSocket
+	buf := make([]byte, 1024)
+	for {
+		n, err := resp.Reader.Read(buf)
+		if err != nil {
+			break
+		}
+		if err := ws.WriteMessage(websocket.TextMessage, buf[:n]); err != nil {
+			break
+		}
+	}
+
+	return nil
 }

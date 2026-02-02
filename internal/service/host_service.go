@@ -1,10 +1,15 @@
 package service
 
 import (
+	"fmt"
+	"os"
+	"os/exec"
+	"runtime"
 	"time"
 
 	"ServerMonitor/internal/model"
 
+	"github.com/creack/pty"
 	"github.com/shirou/gopsutil/v3/cpu"
 	"github.com/shirou/gopsutil/v3/disk"
 	"github.com/shirou/gopsutil/v3/mem"
@@ -45,5 +50,21 @@ func GetHostMetrics() model.SystemInfo {
 		FreeMemory:  v.Free,
 		UsedMemory:  v.Used,
 		Disks:       disks,
+		HostOS:      runtime.GOOS,
 	}
+}
+
+// StartHostConsole spawns a Shell PTY session (Linux only)
+func StartHostConsole() (*os.File, error) {
+	if runtime.GOOS == "windows" {
+		return nil, fmt.Errorf("host console is only supported on Linux")
+	}
+
+	c := exec.Command("bash")
+	// pty.Start resizes the terminal to a default size (80x24) usually.
+	f, err := pty.Start(c)
+	if err != nil {
+		return nil, err
+	}
+	return f, nil
 }

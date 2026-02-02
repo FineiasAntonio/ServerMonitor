@@ -7,6 +7,7 @@ type SystemInfo struct {
 	FreeMemory  uint64     `json:"free_memory"`
 	UsedMemory  uint64     `json:"used_memory"`
 	Disks       []DiskInfo `json:"disks"`
+	HostOS      string     `json:"host_os"`
 }
 
 // DiskInfo holds storage metrics

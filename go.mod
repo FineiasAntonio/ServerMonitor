@@ -3,7 +3,9 @@ module ServerMonitor
 go 1.25.3
 
 require (
+	github.com/creack/pty v1.1.24
 	github.com/docker/docker v26.1.5+incompatible
+	github.com/gorilla/websocket v1.5.3
 	github.com/shirou/gopsutil/v3 v3.24.5
 )
 
