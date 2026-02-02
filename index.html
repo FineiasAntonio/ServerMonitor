@@ -99,6 +99,11 @@
             </div>
         </div>
 
+        <!-- Disk Usage -->
+        <div id="disks-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <!-- Disks injected by JS -->
+        </div>
+
         <!-- Containers Table -->
         <div class="bg-gray-800 rounded-lg shadow border border-gray-700 overflow-hidden">
             <div class="px-6 py-4 border-b border-gray-700 flex justify-between items-center">
@@ -202,7 +207,37 @@
                 document.getElementById('mem-val').innerText = memPerc + '%';
                 document.getElementById('mem-detais').innerText = `(${formatBytes(Number(memUsed))} / ${formatBytes(Number(memTotal))})`;
                 document.getElementById('mem-bar').style.width = memPerc + '%';
+
+                // Disks
+                const disksContainer = document.getElementById('disks-container');
+                disksContainer.innerHTML = ''; // Re-render for simplicity (or diff if we wanted to be fancy)
                 
+                if (data.disks && data.disks.length > 0) {
+                    data.disks.forEach(disk => {
+                        const usedPerc = disk.used_percent.toFixed(1);
+                        let color = 'bg-blue-500';
+                        if (usedPerc > 80) color = 'bg-red-500';
+                        else if (usedPerc > 50) color = 'bg-yellow-500';
+
+                        const div = document.createElement('div');
+                        div.className = 'bg-gray-800 rounded-lg shadow p-6 border border-gray-700';
+                        div.innerHTML = `
+                            <div class="flex items-center justify-between mb-4">
+                                <h2 class="text-lg font-medium text-gray-300 truncate" title="${disk.path}">${disk.path}</h2>
+                                <i class="fas fa-hdd text-gray-400 text-xl"></i>
+                            </div>
+                            <div class="flex items-end space-x-2">
+                                <span class="text-2xl font-bold text-white">${usedPerc}%</span>
+                                <span class="text-xs text-gray-400 mb-1 ml-2">(${formatBytes(disk.used)} / ${formatBytes(disk.total)})</span>
+                            </div>
+                            <div class="w-full bg-gray-700 rounded-full h-2.5 mt-4">
+                                <div class="${color} h-2.5 rounded-full transition-all duration-500" style="width: ${usedPerc}%"></div>
+                            </div>
+                        `;
+                        disksContainer.appendChild(div);
+                    });
+                }
+
                 document.getElementById('last-updated').innerText = `Last updated: ${new Date().toLocaleTimeString()}`;
             } catch (e) {
                 console.error("Metric fetch error:", e);
