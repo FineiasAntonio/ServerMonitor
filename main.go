@@ -29,6 +29,6 @@ func main() {
 	api.RegisterRoutes(mux)
 
 	// 3. Start Server
-	fmt.Println("Server running on port :8080...")
-	log.Fatal(http.ListenAndServe(":8080", mux))
+	fmt.Println("Server running on port :15000...")
+	log.Fatal(http.ListenAndServe(":15000", mux))
 }
